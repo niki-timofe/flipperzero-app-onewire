@@ -54,23 +54,30 @@ void onewire_worker_search(OneWireWorker* instance) {
     furi_hal_power_enable_otg();
 
     while(instance->state == OneWireWorkerSearch) {
-        if(onewire_host_search(instance->onewire_host, onewire_device->address, NORMAL_SEARCH)) {
-            instance->callback(OneWireWorkerEventDeviceFound, instance->context);
+        if(!onewire_host_search(instance->onewire_host, onewire_device->address, NORMAL_SEARCH)) {
             onewire_host_reset_search(instance->onewire_host);
-
-            const OneWireDeviceReader* reader = onewire_device_reader_registry_get_by_family(
-                &onewire_device_reader_registry, onewire_device->address[0]);
-
-            if(reader != NULL) {
-                instance->callback(OneWireWorkerEventReadDS18B20, instance->context);
-
-                if(reader->read(instance->onewire_host, onewire_device)) {
-                    break;
-                }
-            }
+            furi_delay_ms(100);
+            continue;
         }
 
-        furi_delay_ms(100);
+        instance->callback(OneWireWorkerEventDeviceFound, instance->context);
+        onewire_host_reset_search(instance->onewire_host);
+
+        const OneWireDeviceReader* reader = onewire_device_reader_registry_get_by_family(
+            &onewire_device_reader_registry, onewire_device->address[0]);
+
+        if(reader == NULL) {
+            instance->callback(OneWireWorkerEventUnsupportedDeviceError, instance->context);
+            break;
+        }
+
+        if(!reader->read(instance->onewire_host, onewire_device)) {
+            instance->callback(OneWireWorkerEventReadError, instance->context);
+            break;
+        }
+
+        instance->callback(OneWireWorkerEventReadSuccess, instance->context);
+        break;
     }
 
     furi_hal_power_disable_otg();

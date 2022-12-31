@@ -1,5 +1,12 @@
 #include "thermometer_i.h"
 
+static const NotificationSequence* thermometer_notification_sequences[] = {
+    &sequence_error,
+    &sequence_success,
+    &sequence_blink_start_cyan,
+    &sequence_blink_stop,
+};
+
 bool thermometer_custom_event_callback(void* context, uint32_t event) {
     furi_assert(context);
     Thermometer* app = context;
@@ -22,6 +29,8 @@ Thermometer* thermometer_alloc() {
     Thermometer* app = malloc(sizeof(Thermometer));
 
     app->gui = furi_record_open(RECORD_GUI);
+
+    app->notifications = furi_record_open(RECORD_NOTIFICATION);
 
     app->view_dispatcher = view_dispatcher_alloc();
     app->scene_manager = scene_manager_alloc(&thermometer_scene_handlers, app);
@@ -71,16 +80,27 @@ void thermometer_app_free(Thermometer* app) {
     scene_manager_free(app->scene_manager);
 
     furi_record_close(RECORD_GUI);
+    furi_record_close(RECORD_NOTIFICATION);
 
     onewire_worker_free(app->onewire_worker);
 
     free(app);
 }
 
+void thermometer_notification_message(
+    Thermometer* thermometer,
+    ThermometerNotificationMessage message) {
+    furi_assert(
+        message < sizeof(thermometer_notification_sequences) / sizeof(NotificationSequence*));
+    notification_message(thermometer->notifications, thermometer_notification_sequences[message]);
+}
+
 int32_t thermometer_app(void* p) {
     UNUSED(p);
 
     Thermometer* thermometer = thermometer_alloc();
+
+    DOLPHIN_DEED(DolphinDeedPluginStart);
 
     view_dispatcher_run(thermometer->view_dispatcher);
 

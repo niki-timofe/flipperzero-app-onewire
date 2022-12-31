@@ -19,6 +19,8 @@ void thermometer_scene_read_on_enter(void* context) {
 
     view_dispatcher_switch_to_view(app->view_dispatcher, ThermometerViewPopup);
 
+    thermometer_notification_message(app, ThermometerNotificationMessageReadStart);
+
     onewire_worker_start(
         app->onewire_worker, OneWireWorkerSearch, &app->device, onewire_worker_on_event, context);
 }
@@ -29,7 +31,8 @@ bool thermometer_scene_read_on_event(void* context, SceneManagerEvent event) {
 
     if(event.type == SceneManagerEventTypeCustom) {
         switch(event.event) {
-        case OneWireWorkerEventReadDS18B20:
+        case OneWireWorkerEventReadSuccess:
+            thermometer_notification_message(app, ThermometerNotificationMessageSuccess);
             scene_manager_search_and_switch_to_another_scene(
                 app->scene_manager, ThermometerSceneInfo);
             consumed = true;
@@ -46,4 +49,6 @@ void thermometer_scene_read_on_exit(void* context) {
     Thermometer* app = context;
 
     onewire_worker_stop(app->onewire_worker);
+
+    thermometer_notification_message(app, ThermometerNotificationMessageBlinkStop);
 }

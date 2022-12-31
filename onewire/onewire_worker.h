@@ -20,7 +20,9 @@ typedef enum {
     OneWireWorkerEventDeviceFound,
 
     // Sensors read
-    OneWireWorkerEventReadDS18B20
+    OneWireWorkerEventReadSuccess,
+    OneWireWorkerEventReadError,
+    OneWireWorkerEventUnsupportedDeviceError
 
 } OneWireWorkerEvent;
 

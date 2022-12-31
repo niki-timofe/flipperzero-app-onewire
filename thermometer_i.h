@@ -2,6 +2,7 @@
 #include "onewire/onewire_worker.h"
 
 #include <furi.h>
+#include <dolphin/dolphin.h>
 
 #include <thermometer_icons.h>
 
@@ -10,6 +11,8 @@
 #include <gui/modules/popup.h>
 #include <gui/modules/submenu.h>
 #include <gui/modules/widget.h>
+
+#include <notification/notification_messages.h>
 
 #include <lib/one_wire/one_wire_host.h>
 
@@ -21,6 +24,8 @@ struct Thermometer {
     Gui* gui;
     ViewDispatcher* view_dispatcher;
     SceneManager* scene_manager;
+
+    NotificationApp* notifications;
 
     Submenu* submenu;
     Widget* widget;
