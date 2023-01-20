@@ -3,8 +3,6 @@
 #include <furi.h>
 #include <furi_hal.h>
 
-#include <lib/one_wire/one_wire_host.h>
-
 #define TAG "OneWireWorker"
 
 struct OneWireWorker {
@@ -68,12 +66,12 @@ void onewire_worker_search(OneWireWorker* instance) {
 
         if(reader == NULL) {
             instance->callback(OneWireWorkerEventUnsupportedDeviceError, instance->context);
-            break;
+            continue;
         }
 
         if(!reader->read(instance->onewire_host, onewire_device)) {
             instance->callback(OneWireWorkerEventReadError, instance->context);
-            break;
+            continue;
         }
 
         instance->callback(OneWireWorkerEventReadSuccess, instance->context);

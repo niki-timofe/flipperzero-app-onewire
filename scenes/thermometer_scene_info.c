@@ -6,8 +6,6 @@ void thermometer_scene_info_on_enter(void* context) {
     const OneWireDeviceReader* reader = onewire_device_reader_registry_get_by_family(
         &onewire_device_reader_registry, app->device.address[0]);
 
-    OneWireDeviceDataParsed* data = reader->parse(&app->device);
-
     FuriString* temp_str;
     temp_str = furi_string_alloc();
 
@@ -17,7 +15,8 @@ void thermometer_scene_info_on_enter(void* context) {
 
     furi_string_reset(temp_str);
 
-    furi_string_cat_printf(temp_str, "Temperature: %.1f*C", (double)data->value);
+    reader->print(&app->device, temp_str);
+
     widget_add_string_multiline_element(
         app->widget, 0, 12, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(temp_str));
 
