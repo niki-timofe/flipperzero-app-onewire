@@ -12,11 +12,12 @@ typedef enum { OneWireDeviceUnitsTemperatureCelsius } OneWireDeviceUnits;
 
 typedef struct {
     OneWireDeviceUnits units;
-    float value;
+    double value;
 } OneWireDeviceDataParsed;
 
 typedef bool (*OneWireDeviceRead)(OneWireHost* host, OneWireDeviceData* device);
 typedef OneWireDeviceDataParsed* (*OneWireDeviceParse)(OneWireDeviceData* device);
+typedef void (*OneWireDevicePrint)(OneWireDeviceData* device, FuriString* string);
 
 typedef struct {
     const uint8_t family;
@@ -24,6 +25,7 @@ typedef struct {
 
     OneWireDeviceRead read;
     OneWireDeviceParse parse;
+    OneWireDevicePrint print;
 } OneWireDeviceReader;
 
 bool onewire_device_is_device_read(OneWireDeviceData* device);
