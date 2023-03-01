@@ -104,7 +104,7 @@ OneWireWorker* onewire_worker_alloc() {
 
     instance->thread = furi_thread_alloc_ex("OneWireWorker", 2048, onewire_worker_task, instance);
 
-    instance->onewire_host = onewire_host_alloc();
+    instance->onewire_host = onewire_host_alloc(&ibutton_gpio);
 
     onewire_worker_change_state(instance, OneWireWorkerReady);
 
