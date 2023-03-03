@@ -18,4 +18,6 @@ jobs:
       - run: echo "$GITHUB_WORKSPACE/tools" >> $GITHUB_PATH
       - run: ufbt update --channel=release
       - run: ufbt
-      - run: find .
+      - uses: actions/upload-artifact@v3
+        with:
+          path: app/dist/*.fap
