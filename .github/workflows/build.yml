@@ -1,0 +1,21 @@
+name: build
+on: [push]
+jobs: 
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: app
+      - uses: actions/checkout@v3
+        with:
+          repository: flipperdevices/flipperzero-ufbt
+          ref: refs/heads/dev
+          path: tools
+      - run: echo "$GITHUB_WORKSPACE/tools" >> $GITHUB_PATH
+      - run: ufbt update --channel=release
+      - run: ufbt
+      - run: find .
