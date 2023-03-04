@@ -1,0 +1,39 @@
+name: build
+on: [push]
+jobs: 
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    strategy:
+      matrix:
+        include:
+          - channel: dev
+            experimental: true
+          - channel: rc
+            experimental: true
+          - channel: release
+            experimental: false
+    continue-on-error: ${{ matrix.experimental }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: app
+      - uses: actions/checkout@v3
+        with:
+          repository: flipperdevices/flipperzero-ufbt
+          ref: refs/heads/dev
+          path: tools
+      - run: echo "$GITHUB_WORKSPACE/tools" >> $GITHUB_PATH
+      - uses: actions/cache@v3
+        id: cache-ufbt
+        with:
+          path: tools/.ufbt
+          key: ${{ runner.os }}-${{ matrix.channel }}-ufbt
+      - run: ufbt update --channel=${{ matrix.channel }}
+      - run: ufbt
+      - uses: actions/upload-artifact@v3
+        with:
+          name: app.${{ matrix.channel }}
+          path: app/dist/*.fap
