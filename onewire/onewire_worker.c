@@ -52,7 +52,7 @@ void onewire_worker_search(OneWireWorker* instance) {
     furi_hal_power_enable_otg();
 
     while(instance->state == OneWireWorkerSearch) {
-        if(!onewire_host_search(instance->onewire_host, onewire_device->address, NORMAL_SEARCH)) {
+        if(!onewire_host_search(instance->onewire_host, onewire_device->address, OneWireHostSearchModeNormal)) {
             onewire_host_reset_search(instance->onewire_host);
             furi_delay_ms(100);
             continue;
