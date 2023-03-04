@@ -16,6 +16,11 @@ jobs:
           ref: refs/heads/dev
           path: tools
       - run: echo "$GITHUB_WORKSPACE/tools" >> $GITHUB_PATH
+      - uses: actions/cache@v3
+        id: cache-ufbt
+        with:
+          path: tools/.ufbt
+          key: ${{ runner.os }}-ufbt
       - run: ufbt update --channel=release
       - run: ufbt
       - uses: actions/upload-artifact@v3
