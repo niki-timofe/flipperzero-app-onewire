@@ -6,6 +6,9 @@ jobs:
     defaults:
       run:
         working-directory: app
+    strategy:
+      matrix:
+        channel: [release, rc, dev]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -20,8 +23,8 @@ jobs:
         id: cache-ufbt
         with:
           path: tools/.ufbt
-          key: ${{ runner.os }}-ufbt
-      - run: ufbt update --channel=release
+          key: ${{ runner.os }}-${{ matrix.channel }}-ufbt
+      - run: ufbt update --channel=${{ matrix.channel }}
       - run: ufbt
       - uses: actions/upload-artifact@v3
         with:
