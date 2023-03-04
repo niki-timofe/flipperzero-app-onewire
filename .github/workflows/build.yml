@@ -8,7 +8,14 @@ jobs:
         working-directory: app
     strategy:
       matrix:
-        channel: [release, rc, dev]
+        include:
+          - channel: dev
+            experimental: true
+          - channel: rc
+            experimental: true
+          - channel: release
+            experimental: false
+    continue-on-error: ${{ matrix.experimental }}
     steps:
       - uses: actions/checkout@v3
         with:
