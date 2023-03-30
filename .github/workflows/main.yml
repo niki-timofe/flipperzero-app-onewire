@@ -61,6 +61,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: app.release
+      - run: ls -R
       - run: |
           echo 'SDK_STATE<<EOF' >> $GITHUB_ENV
           cat sdk_state.json >> $GITHUB_ENV
