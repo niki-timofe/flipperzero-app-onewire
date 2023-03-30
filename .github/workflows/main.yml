@@ -64,14 +64,14 @@ jobs:
       - run: ls -R
       - run: |
           echo 'SDK_STATE<<EOF' >> $GITHUB_ENV
-          cat sdk_state.json >> $GITHUB_ENV
+          cat tools/.ufbt/current/sdk_state.json >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
       - run: |
           echo "Flipper firmware version: ${{ fromJson(env.SDK_STATE).meta.version }}" >> release.txt
       - uses: softprops/action-gh-release@v1
         with:
           files: |
-            *.fap
+            app/dist/*.fap
           draft: true
           body_path: release.txt
           append_body: true
