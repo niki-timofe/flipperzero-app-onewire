@@ -63,9 +63,10 @@ jobs:
           name: app.release
       - run: ls -R
       - run: |
-          echo 'SDK_STATE<<EOF' >> $GITHUB_ENV
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "SDK_STATE<<$EOF" >> $GITHUB_ENV
           cat tools/.ufbt/current/sdk_state.json >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
+          echo "$EOF" >> $GITHUB_ENV
       - run: |
           echo "Flipper firmware version: ${{ fromJson(env.SDK_STATE).meta.version }}" >> release.txt
       - uses: softprops/action-gh-release@v1
