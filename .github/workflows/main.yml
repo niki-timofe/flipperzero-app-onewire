@@ -38,14 +38,17 @@ jobs:
           repository: flipperdevices/flipperzero-ufbt
           ref: refs/heads/dev
           path: tools
-      - run: echo "$GITHUB_WORKSPACE/tools" >> $GITHUB_PATH
+      - run: |
+          echo "$GITHUB_WORKSPACE/tools" >> $GITHUB_PATH
       - uses: actions/cache@v3
         id: cache-ufbt
         with:
           path: tools/.ufbt
           key: ${{ runner.os }}-${{ matrix.channel }}-ufbt
-      - run: ufbt update --channel=${{ matrix.channel }}
-      - run: ufbt
+      - run: |
+          ufbt update --channel=${{ matrix.channel }}
+      - run: |
+          ufbt
       - uses: actions/upload-artifact@v3
         with:
           name: app.${{ matrix.channel }}
@@ -61,12 +64,8 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: app.release
-      - run: ls -R
       - run: |
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "SDK_STATE<<$EOF" >> $GITHUB_ENV
-          cat tools/.ufbt/current/sdk_state.json >> $GITHUB_ENV
-          echo "$EOF" >> $GITHUB_ENV
+          echo "SDK_STATE=$(awk 1 ORS='' tools/.ufbt/current/sdk_state.json)" >> $GITHUB_ENV
       - run: |
           echo "Flipper firmware version: ${{ fromJson(env.SDK_STATE).meta.version }}" >> release.txt
       - uses: softprops/action-gh-release@v1
