@@ -5,7 +5,7 @@ const double resolution[] = {0.5, 0.25, 0.125, 0.0625};
 void onewire_device_reader_ds18b20_request_conversion(OneWireHost* host) {
     FURI_CRITICAL_ENTER()
     onewire_host_reset(host);
-    onewire_host_skip(host);
+    onewire_host_write(host, 0xCCU);
     onewire_host_write(host, 0x44);
     FURI_CRITICAL_EXIT()
 }
@@ -15,7 +15,7 @@ void onewire_device_reader_ds18b20_read_scratchpad(
     OneWireDeviceData* onewire_device) {
     FURI_CRITICAL_ENTER()
     onewire_host_reset(host);
-    onewire_host_skip(host);
+    onewire_host_write(host, 0xCCU);
     onewire_host_write(host, 0xBE);
     onewire_host_read_bytes(host, onewire_device->data, 8);
     onewire_host_reset(host);
@@ -53,7 +53,6 @@ void onewire_device_reader_ds18b20_print(OneWireDeviceData* onewire_device, Furi
     OneWireDeviceDataParsed* data = onewire_device_reader_ds18b20_parse(onewire_device);
 
     furi_string_cat_printf(string, "Resolution: %.4f\n", resolution[onewire_device->data[4] >> 5]);
-
     furi_string_cat_printf(string, "Temperature: %.4f*C", data->value);
 }
 
