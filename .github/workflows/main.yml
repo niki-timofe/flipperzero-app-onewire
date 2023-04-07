@@ -35,8 +35,7 @@ jobs:
           path: app
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
-          cache: 'pip'
+          python-version: '3.x'
       - run: |
           pip install ufbt
       - uses: actions/cache@v3
