@@ -50,6 +50,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: app.${{ matrix.channel }}
+          if-no-files-found: error
           path: |
             app/dist/*.fap
             .ufbt/current/ufbt_state.json
