@@ -18,7 +18,7 @@
 
 #include "scenes/thermometer_scene.h"
 
-#define TM_APP_VERSION "0.1.3"
+#define TM_APP_VERSION "0.1.4"
 
 struct Thermometer {
     Gui* gui;
