@@ -62,7 +62,7 @@ jobs:
       - run: |
           echo "SDK_STATE=$(awk 1 ORS='' ~/.ufbt/current/ufbt_state.json)" >> $GITHUB_ENV
       - run: |
-          echo "Flipper firmware version: ${{ fromJson(env.SDK_STATE).meta.version }}" >> release.txt
+          echo "Flipper firmware version: ${{ fromJson(env.SDK_STATE).version }}" >> release.txt
       - uses: softprops/action-gh-release@v1
         with:
           files: |
