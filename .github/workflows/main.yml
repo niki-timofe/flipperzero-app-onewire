@@ -15,6 +15,7 @@ on:
       - converted_to_draft
 jobs:
   build:
+    if: "!startsWith(github.ref, 'refs/tags/') || !matrix.experimental"
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -58,7 +59,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: app.release
-          path: "~"
+          path: ~/
       - run: |
           echo "SDK_STATE=$(awk 1 ORS='' ~/.ufbt/current/ufbt_state.json)" >> $GITHUB_ENV
       - run: |
