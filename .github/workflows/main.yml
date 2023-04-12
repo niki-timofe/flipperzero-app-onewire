@@ -33,17 +33,15 @@ jobs:
       - uses: actions/checkout@v3
         with:
           path: app
-      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          repository: flipperdevices/flipperzero-ufbt
-          ref: refs/heads/dev
-          path: tools
+          python-version: '3.x'
       - run: |
-          echo "$GITHUB_WORKSPACE/tools" >> $GITHUB_PATH
+          pip install ufbt
       - uses: actions/cache@v3
         id: cache-ufbt
         with:
-          path: tools/.ufbt
+          path: ~/.ufbt
           key: ${{ runner.os }}-${{ matrix.channel }}-ufbt
       - run: |
           ufbt update --channel=${{ matrix.channel }}
@@ -52,9 +50,10 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: app.${{ matrix.channel }}
+          if-no-files-found: error
           path: |
             app/dist/*.fap
-            tools/.ufbt/current/sdk_state.json
+            ~/.ufbt/current/ufbt_state.json
           
   release:
     if: startsWith(github.ref, 'refs/tags/')
@@ -65,7 +64,7 @@ jobs:
         with:
           name: app.release
       - run: |
-          echo "SDK_STATE=$(awk 1 ORS='' tools/.ufbt/current/sdk_state.json)" >> $GITHUB_ENV
+          echo "SDK_STATE=$(awk 1 ORS='' ~/.ufbt/current/ufbt_state.json)" >> $GITHUB_ENV
       - run: |
           echo "Flipper firmware version: ${{ fromJson(env.SDK_STATE).meta.version }}" >> release.txt
       - uses: softprops/action-gh-release@v1
