@@ -16,9 +16,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: app
     strategy:
       matrix:
         include:
@@ -31,8 +28,6 @@ jobs:
     continue-on-error: ${{ github.event.pull_request != null && github.event.pull_request.draft || matrix.experimental }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          path: app
       - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
@@ -52,7 +47,7 @@ jobs:
           name: app.${{ matrix.channel }}
           if-no-files-found: error
           path: |
-            app/dist/*.fap
+            dist/*.fap
             ~/.ufbt/current/ufbt_state.json
           
   release:
@@ -63,6 +58,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: app.release
+          path: "~"
       - run: |
           echo "SDK_STATE=$(awk 1 ORS='' ~/.ufbt/current/ufbt_state.json)" >> $GITHUB_ENV
       - run: |
@@ -70,7 +66,7 @@ jobs:
       - uses: softprops/action-gh-release@v1
         with:
           files: |
-            app/dist/*.fap
+            dist/*.fap
           draft: true
           body_path: release.txt
           append_body: true
