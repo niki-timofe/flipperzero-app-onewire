@@ -5,6 +5,7 @@
 
 #define TM_CLI_COMMAND      "thermometer"
 #define TM_CLI_READ_TIMEOUT 30000
+#define TM_CLI_LOG_TIMEOUT  3000
 #define TM_CLI_POLL_MS      100
 
 static void thermometer_cli_print_usage(void) {
@@ -27,21 +28,33 @@ static bool thermometer_cli_is_idle(Thermometer* app) {
     return scene == ThermometerSceneStart || scene == ThermometerSceneInfo;
 }
 
-static void thermometer_cli_print_device(Thermometer* app) {
-    // Snapshot: the worker may update the device while we print
-    OneWireDeviceData device = app->device;
+// Waits until the app thread has switched the logging state, false on timeout or app exit
+static bool thermometer_cli_wait_logging(Thermometer* app, bool active) {
+    for(uint32_t waited = 0; waited < TM_CLI_LOG_TIMEOUT; waited += TM_CLI_POLL_MS) {
+        ThermometerStatus status;
+        thermometer_status_get(app, &status);
+        if(status.log_active == active) return true;
+        if(app->exiting) return false;
+        furi_delay_ms(TM_CLI_POLL_MS);
+    }
+    return false;
+}
+
+static void thermometer_cli_print_device(const ThermometerStatus* status) {
+    const OneWireDeviceData* device = &status->device;
+    OneWireDeviceData copy = *device;
     const OneWireDeviceReader* reader = onewire_device_reader_registry_get_by_family(
-        &onewire_device_reader_registry, device.address[0]);
-    OneWireDeviceDataParsed* parsed = reader->parse(&device);
+        &onewire_device_reader_registry, device->address[0]);
+    OneWireDeviceDataParsed* parsed = reader->parse(&copy);
 
     printf("sensor: %s\r\n", reader->family_name);
     printf("addr: ");
-    for(size_t i = 0; i < COUNT_OF(device.address); i++) {
-        printf("%02X", device.address[i]);
+    for(size_t i = 0; i < COUNT_OF(device->address); i++) {
+        printf("%02X", device->address[i]);
     }
     printf("\r\n");
     // Only the log worker stamps readings
-    if(device.timestamp) printf("unix_ts: %lu\r\n", device.timestamp);
+    if(device->timestamp) printf("unix_ts: %lu\r\n", device->timestamp);
     printf("raw: %d\r\n", parsed->raw);
     printf("temp_c: %.4f\r\n", parsed->value);
 
@@ -49,27 +62,33 @@ static void thermometer_cli_print_device(Thermometer* app) {
 }
 
 static void thermometer_cli_status(Thermometer* app) {
-    printf("logging: %s\r\n", app->log_active ? "yes" : "no");
-    if(!app->log_active) return;
+    ThermometerStatus status;
+    thermometer_status_get(app, &status);
 
-    printf("file: %s\r\n", furi_string_get_cstr(app->log_path));
-    printf("rows: %lu\r\n", app->log_rows);
-    printf("errors: %lu\r\n", app->log_errors);
-    printf("elapsed_s: %lu\r\n", furi_hal_rtc_get_timestamp() - app->log_start_timestamp);
+    printf("logging: %s\r\n", status.log_active ? "yes" : "no");
+    if(!status.log_active) return;
 
-    if(app->log_has_value) {
-        thermometer_cli_print_device(app);
+    printf("file: %s\r\n", status.log_path);
+    printf("rows: %lu\r\n", status.log_rows);
+    printf("errors: %lu\r\n", status.log_errors);
+    printf("elapsed_s: %lu\r\n", furi_hal_rtc_get_timestamp() - status.log_start_timestamp);
+
+    if(status.log_has_value && status.device_valid) {
+        thermometer_cli_print_device(&status);
     } else {
         printf("temp_c: none\r\n");
     }
 }
 
 static void thermometer_cli_info(Thermometer* app) {
-    if(!onewire_device_is_device_read(&app->device)) {
+    ThermometerStatus status;
+    thermometer_status_get(app, &status);
+
+    if(!status.device_valid) {
         printf("error: no sensor read yet, run \"" TM_CLI_COMMAND " read\"\r\n");
         return;
     }
-    thermometer_cli_print_device(app);
+    thermometer_cli_print_device(&status);
 }
 
 static void thermometer_cli_read(Thermometer* app) {
@@ -78,42 +97,56 @@ static void thermometer_cli_read(Thermometer* app) {
         return;
     }
 
+    ThermometerStatus status;
+    thermometer_status_get(app, &status);
+    const uint32_t seq = status.read_seq;
+
     view_dispatcher_send_custom_event(app->view_dispatcher, ThermometerCustomEventCliRead);
 
-    // The read scene switches to the info scene on success
-    uint32_t waited = 0;
-    while(thermometer_cli_scene(app) != ThermometerSceneInfo) {
-        if(waited >= TM_CLI_READ_TIMEOUT) {
-            printf("error: no sensor found in %d s\r\n", TM_CLI_READ_TIMEOUT / 1000);
+    // Every successful reading is published with a new sequence number
+    for(uint32_t waited = 0; waited < TM_CLI_READ_TIMEOUT; waited += TM_CLI_POLL_MS) {
+        thermometer_status_get(app, &status);
+        if(status.read_seq != seq) {
+            thermometer_cli_print_device(&status);
+            return;
+        }
+        if(app->exiting) {
+            printf("error: application is closing\r\n");
             return;
         }
         furi_delay_ms(TM_CLI_POLL_MS);
-        waited += TM_CLI_POLL_MS;
     }
-    thermometer_cli_print_device(app);
+    printf("error: no sensor found in %d s\r\n", TM_CLI_READ_TIMEOUT / 1000);
 }
 
 static void thermometer_cli_log(Thermometer* app, FuriString* args) {
     FuriString* action = furi_string_alloc();
     args_read_string_and_trim(args, action);
 
+    ThermometerStatus status;
+    thermometer_status_get(app, &status);
+
     if(furi_string_equal(action, "start")) {
-        if(app->log_active) {
+        if(status.log_active) {
             printf("error: already logging\r\n");
         } else if(!thermometer_cli_is_idle(app)) {
             printf("error: busy, leave the current screen first\r\n");
         } else {
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, ThermometerCustomEventCliLogStart);
-            printf("logging started\r\n");
+            printf(
+                thermometer_cli_wait_logging(app, true) ? "logging started\r\n" :
+                                                          "error: could not start\r\n");
         }
     } else if(furi_string_equal(action, "stop")) {
-        if(!app->log_active) {
+        if(!status.log_active) {
             printf("error: not logging\r\n");
         } else {
             view_dispatcher_send_custom_event(
                 app->view_dispatcher, ThermometerCustomEventCliLogStop);
-            printf("logging stopped\r\n");
+            printf(
+                thermometer_cli_wait_logging(app, false) ? "logging stopped\r\n" :
+                                                           "error: could not stop\r\n");
         }
     } else {
         thermometer_cli_print_usage();
@@ -123,7 +156,10 @@ static void thermometer_cli_log(Thermometer* app, FuriString* args) {
 }
 
 static void thermometer_cli_clear(Thermometer* app) {
-    if(app->log_active) {
+    ThermometerStatus status;
+    thermometer_status_get(app, &status);
+
+    if(status.log_active) {
         printf("error: logging, stop it first\r\n");
         return;
     }
@@ -139,23 +175,34 @@ static void thermometer_cli_execute(PipeSide* pipe, FuriString* args, void* cont
     UNUSED(pipe);
     Thermometer* app = context;
 
-    FuriString* cmd = furi_string_alloc();
-    if(!args_read_string_and_trim(args, cmd)) {
-        thermometer_cli_print_usage();
-    } else if(furi_string_equal(cmd, "status")) {
-        thermometer_cli_status(app);
-    } else if(furi_string_equal(cmd, "read")) {
-        thermometer_cli_read(app);
-    } else if(furi_string_equal(cmd, "info")) {
-        thermometer_cli_info(app);
-    } else if(furi_string_equal(cmd, "log")) {
-        thermometer_cli_log(app, args);
-    } else if(furi_string_equal(cmd, "clear")) {
-        thermometer_cli_clear(app);
-    } else {
-        thermometer_cli_print_usage();
+    // Lets the app wait for a running command before it frees its state
+    furi_mutex_acquire(app->status_mutex, FuriWaitForever);
+    app->cli_running++;
+    furi_mutex_release(app->status_mutex);
+
+    if(!app->exiting) {
+        FuriString* cmd = furi_string_alloc();
+        if(!args_read_string_and_trim(args, cmd)) {
+            thermometer_cli_print_usage();
+        } else if(furi_string_equal(cmd, "status")) {
+            thermometer_cli_status(app);
+        } else if(furi_string_equal(cmd, "read")) {
+            thermometer_cli_read(app);
+        } else if(furi_string_equal(cmd, "info")) {
+            thermometer_cli_info(app);
+        } else if(furi_string_equal(cmd, "log")) {
+            thermometer_cli_log(app, args);
+        } else if(furi_string_equal(cmd, "clear")) {
+            thermometer_cli_clear(app);
+        } else {
+            thermometer_cli_print_usage();
+        }
+        furi_string_free(cmd);
     }
-    furi_string_free(cmd);
+
+    furi_mutex_acquire(app->status_mutex, FuriWaitForever);
+    app->cli_running--;
+    furi_mutex_release(app->status_mutex);
 }
 
 void thermometer_cli_register(Thermometer* app) {
@@ -166,8 +213,17 @@ void thermometer_cli_register(Thermometer* app) {
 }
 
 void thermometer_cli_unregister(Thermometer* app) {
-    UNUSED(app);
     CliRegistry* registry = furi_record_open(RECORD_CLI);
     cli_registry_delete_command(registry, TM_CLI_COMMAND);
     furi_record_close(RECORD_CLI);
+
+    // Running commands see the flag and return; the app state stays valid until then
+    app->exiting = true;
+    for(;;) {
+        furi_mutex_acquire(app->status_mutex, FuriWaitForever);
+        const uint32_t running = app->cli_running;
+        furi_mutex_release(app->status_mutex);
+        if(running == 0) break;
+        furi_delay_ms(TM_CLI_POLL_MS);
+    }
 }

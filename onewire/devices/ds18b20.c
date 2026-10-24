@@ -12,11 +12,15 @@ static uint8_t ds18b20_resolution_index(const OneWireDeviceData* onewire_device)
     return (onewire_device->data[4] >> 5) & 0x03;
 }
 
-static int16_t ds18b20_raw(const OneWireDeviceData* onewire_device) {
-    uint16_t raw = onewire_device->data[0] | onewire_device->data[1] << 8;
+static int16_t ds18b20_raw_from(const uint8_t* scratchpad) {
+    uint16_t raw = scratchpad[0] | scratchpad[1] << 8;
     // Lower bits are undefined at resolutions below 12 bit
-    raw &= ~((1U << (3 - ds18b20_resolution_index(onewire_device))) - 1);
+    raw &= ~((1U << (3 - ((scratchpad[4] >> 5) & 0x03))) - 1);
     return (int16_t)raw;
+}
+
+static int16_t ds18b20_raw(const OneWireDeviceData* onewire_device) {
+    return ds18b20_raw_from(onewire_device->data);
 }
 
 void onewire_device_reader_ds18b20_request_conversion(OneWireHost* host) {
@@ -27,15 +31,13 @@ void onewire_device_reader_ds18b20_request_conversion(OneWireHost* host) {
     FURI_CRITICAL_EXIT();
 }
 
-static bool onewire_device_reader_ds18b20_read_scratchpad(
-    OneWireHost* host,
-    OneWireDeviceData* onewire_device) {
+static bool onewire_device_reader_ds18b20_read_scratchpad(OneWireHost* host, uint8_t* scratchpad) {
     FURI_CRITICAL_ENTER();
     bool present = onewire_host_reset(host);
     if(present) {
         onewire_host_write(host, 0xCCU);
         onewire_host_write(host, 0xBE);
-        onewire_host_read_bytes(host, onewire_device->data, DS18B20_SCRATCHPAD_SIZE);
+        onewire_host_read_bytes(host, scratchpad, DS18B20_SCRATCHPAD_SIZE);
         onewire_host_reset(host);
     }
     FURI_CRITICAL_EXIT();
@@ -45,17 +47,21 @@ static bool onewire_device_reader_ds18b20_read_scratchpad(
 bool onewire_device_reader_ds18b20_read(OneWireHost* host, OneWireDeviceData* onewire_device) {
     onewire_device_reader_ds18b20_request_conversion(host);
     furi_delay_ms(800);
-    if(!onewire_device_reader_ds18b20_read_scratchpad(host, onewire_device)) return false;
 
-    if(maxim_crc8(onewire_device->data, DS18B20_SCRATCHPAD_SIZE, MAXIM_CRC8_INIT) != 0) {
+    // The device data is only touched by a reading that passed all the checks
+    uint8_t scratchpad[DS18B20_SCRATCHPAD_SIZE];
+    if(!onewire_device_reader_ds18b20_read_scratchpad(host, scratchpad)) return false;
+
+    if(maxim_crc8(scratchpad, DS18B20_SCRATCHPAD_SIZE, MAXIM_CRC8_INIT) != 0) {
         return false;
     }
 
     if(onewire_device->first_read) {
         onewire_device->first_read = false;
-        if(ds18b20_raw(onewire_device) == DS18B20_POWER_ON_RAW) return false;
+        if(ds18b20_raw_from(scratchpad) == DS18B20_POWER_ON_RAW) return false;
     }
 
+    memcpy(onewire_device->data, scratchpad, DS18B20_SCRATCHPAD_SIZE);
     return true;
 }
 

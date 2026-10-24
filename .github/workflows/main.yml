@@ -46,6 +46,7 @@ jobs:
         with:
           name: app.${{ matrix.channel }}
           if-no-files-found: error
+          include-hidden-files: true
           path: |
             dist/*.fap
             ~/.ufbt/current/ufbt_state.json

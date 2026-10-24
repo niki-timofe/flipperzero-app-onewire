@@ -75,8 +75,34 @@ void thermometer_tick_event_callback(void* context) {
     scene_manager_handle_tick_event(app->scene_manager);
 }
 
+void thermometer_status_publish(Thermometer* app, bool new_reading) {
+    furi_mutex_acquire(app->status_mutex, FuriWaitForever);
+    ThermometerStatus* status = &app->status;
+    status->log_active = app->log_active;
+    strlcpy(status->log_path, furi_string_get_cstr(app->log_path), sizeof(status->log_path));
+    status->log_rows = app->log_rows;
+    status->log_errors = app->log_errors;
+    status->log_start_timestamp = app->log_start_timestamp;
+    status->log_has_value = app->log_has_value;
+    if(new_reading) {
+        status->device = app->device;
+        status->device_valid = true;
+        status->read_seq++;
+    }
+    furi_mutex_release(app->status_mutex);
+}
+
+void thermometer_status_get(Thermometer* app, ThermometerStatus* status) {
+    furi_mutex_acquire(app->status_mutex, FuriWaitForever);
+    *status = app->status;
+    furi_mutex_release(app->status_mutex);
+}
+
 Thermometer* thermometer_alloc() {
     Thermometer* app = malloc(sizeof(Thermometer));
+    memset(app, 0, sizeof(Thermometer));
+
+    app->status_mutex = furi_mutex_alloc(FuriMutexTypeNormal);
 
     app->gui = furi_record_open(RECORD_GUI);
 
@@ -147,6 +173,7 @@ void thermometer_app_free(Thermometer* app) {
     onewire_worker_free(app->onewire_worker);
 
     furi_string_free(app->log_path);
+    furi_mutex_free(app->status_mutex);
 
     free(app);
 }

@@ -40,8 +40,9 @@ void onewire_worker_start(
 void onewire_worker_stop(OneWireWorker* instance) {
     furi_assert(instance);
     if(furi_thread_get_state(instance->thread) != FuriThreadStateStopped) {
-        onewire_host_stop(instance->onewire_host);
+        // State first: a read interrupted by the host stop must not report an error
         onewire_worker_change_state(instance, OneWireWorkerStateStop);
+        onewire_host_stop(instance->onewire_host);
         furi_thread_join(instance->thread);
     }
 }
@@ -71,11 +72,17 @@ void onewire_worker_search(OneWireWorker* instance) {
             continue;
         }
 
+        const bool was_first_read = onewire_device->first_read;
         if(!reader->read(instance->onewire_host, onewire_device)) {
-            instance->callback(OneWireWorkerEventReadError, instance->context);
+            // Power-on value was discarded: not an error, read again
+            const bool discarded = was_first_read && !onewire_device->first_read;
+            if(!discarded && instance->state == OneWireWorkerSearch) {
+                instance->callback(OneWireWorkerEventReadError, instance->context);
+            }
             continue;
         }
 
+        if(instance->state != OneWireWorkerSearch) break;
         instance->callback(OneWireWorkerEventReadSuccess, instance->context);
         break;
     }
@@ -121,7 +128,11 @@ void onewire_worker_log(OneWireWorker* instance) {
         const uint32_t read_start = furi_get_tick();
         instance->callback(OneWireWorkerEventReadStart, instance->context);
         const bool was_first_read = onewire_device->first_read;
-        if(reader->read(instance->onewire_host, onewire_device)) {
+        const bool read_ok = reader->read(instance->onewire_host, onewire_device);
+        // A stop request during the read: report nothing
+        if(instance->state != OneWireWorkerLog) break;
+
+        if(read_ok) {
             onewire_device->timestamp = furi_hal_rtc_get_timestamp();
             instance->callback(OneWireWorkerEventReadSuccess, instance->context);
         } else if(was_first_read && !onewire_device->first_read) {

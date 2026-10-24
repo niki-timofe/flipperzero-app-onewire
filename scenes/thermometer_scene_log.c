@@ -64,8 +64,9 @@ static void thermometer_scene_log_draw_callback(Canvas* canvas, void* _model) {
         canvas_set_font(canvas, FontPrimary);
         canvas_draw_str_aligned(canvas, x + number_width + 8, 21, AlignLeft, AlignTop, "C");
     } else {
-        canvas_set_font(canvas, FontBigNumbers);
-        canvas_draw_str_aligned(canvas, 64, 13, AlignCenter, AlignTop, "Waiting...");
+        // FontBigNumbers has no letters
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str_aligned(canvas, 64, 20, AlignCenter, AlignTop, "Waiting...");
     }
 
     canvas_set_font(canvas, FontSecondary);
@@ -232,6 +233,14 @@ void thermometer_scene_log_on_enter(void* context) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     storage_simply_mkdir(storage, EXT_PATH("apps_data"));
     storage_simply_mkdir(storage, TM_LOG_DIR);
+
+    // A restart within the same second must not append to the previous file
+    FuriString* base = furi_string_alloc_set(app->log_path);
+    furi_string_replace(base, ".csv", "");
+    for(uint32_t n = 1; storage_file_exists(storage, furi_string_get_cstr(app->log_path)); n++) {
+        furi_string_printf(app->log_path, "%s-%lu.csv", furi_string_get_cstr(base), n);
+    }
+    furi_string_free(base);
     furi_record_close(RECORD_STORAGE);
 
     app->log_write_failed = !thermometer_scene_log_append(app, LOG_HEADER);
@@ -239,6 +248,7 @@ void thermometer_scene_log_on_enter(void* context) {
     with_view_model(
         app->log_view, ThermometerLogViewModel * model, { model->confirm_stop = false; }, false);
     thermometer_scene_log_update(app);
+    thermometer_status_publish(app, false);
     view_dispatcher_switch_to_view(app->view_dispatcher, ThermometerViewLog);
 
     thermometer_notification_message(app, ThermometerNotificationMessageReadStart);
@@ -269,6 +279,7 @@ bool thermometer_scene_log_on_event(void* context, SceneManagerEvent event) {
             thermometer_notification_message(app, ThermometerNotificationMessageBlinkStop);
             thermometer_scene_log_write_row(app);
             thermometer_scene_log_update(app);
+            thermometer_status_publish(app, true);
             consumed = true;
             break;
         case OneWireWorkerEventReadError:
@@ -276,6 +287,7 @@ bool thermometer_scene_log_on_event(void* context, SceneManagerEvent event) {
             app->log_errors++;
             thermometer_notification_message(app, ThermometerNotificationMessageError);
             thermometer_scene_log_update(app);
+            thermometer_status_publish(app, false);
             consumed = true;
             break;
         default:
@@ -283,6 +295,7 @@ bool thermometer_scene_log_on_event(void* context, SceneManagerEvent event) {
         }
     } else if(event.type == SceneManagerEventTypeTick) {
         thermometer_scene_log_update(app);
+        thermometer_status_publish(app, false);
     }
 
     return consumed;
@@ -293,6 +306,7 @@ void thermometer_scene_log_on_exit(void* context) {
 
     onewire_worker_stop(app->onewire_worker);
     app->log_active = false;
+    thermometer_status_publish(app, false);
 
     thermometer_notification_message(app, ThermometerNotificationMessageBlinkStop);
 }

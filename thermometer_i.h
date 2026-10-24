@@ -27,6 +27,19 @@
 #define TM_APP_VERSION "0.2.0"
 #define TM_LOG_DIR     "/ext/apps_data/thermometer"
 
+// Copy of the state published by the app thread, so that the CLI thread never reads live fields
+typedef struct {
+    bool log_active;
+    char log_path[64];
+    uint32_t log_rows;
+    uint32_t log_errors;
+    uint32_t log_start_timestamp;
+    bool log_has_value;
+    bool device_valid;
+    uint32_t read_seq; // Incremented with every successful reading
+    OneWireDeviceData device;
+} ThermometerStatus;
+
 struct Thermometer {
     Gui* gui;
     ViewDispatcher* view_dispatcher;
@@ -51,6 +64,12 @@ struct Thermometer {
     double log_last_value;
     bool log_write_failed;
     bool log_active;
+
+    // Shared with the CLI
+    FuriMutex* status_mutex;
+    ThermometerStatus status;
+    volatile uint32_t cli_running;
+    volatile bool exiting;
 };
 
 typedef enum {
@@ -71,3 +90,8 @@ typedef enum {
 View* thermometer_scene_log_view_alloc(Thermometer* app);
 
 void thermometer_scene_log_view_free(View* view);
+
+// Called from the app thread: publishes the log state, and the device if it was just read
+void thermometer_status_publish(Thermometer* app, bool new_reading);
+
+void thermometer_status_get(Thermometer* app, ThermometerStatus* status);
