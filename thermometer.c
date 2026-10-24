@@ -36,7 +36,8 @@ bool thermometer_custom_event_callback(void* context, uint32_t event) {
     switch(event) {
     case ThermometerCustomEventCliRead:
         if(scene == ThermometerSceneInfo) {
-            scene_manager_search_and_switch_to_previous_scene(scene_manager, ThermometerSceneStart);
+            scene_manager_search_and_switch_to_previous_scene(
+                scene_manager, ThermometerSceneStart);
         }
         if(scene_manager_get_current_scene(scene_manager) == ThermometerSceneStart) {
             scene_manager_next_scene(scene_manager, ThermometerSceneRead);
@@ -44,7 +45,8 @@ bool thermometer_custom_event_callback(void* context, uint32_t event) {
         return true;
     case ThermometerCustomEventCliLogStart:
         if(scene == ThermometerSceneInfo) {
-            scene_manager_search_and_switch_to_previous_scene(scene_manager, ThermometerSceneStart);
+            scene_manager_search_and_switch_to_previous_scene(
+                scene_manager, ThermometerSceneStart);
         }
         if(scene_manager_get_current_scene(scene_manager) == ThermometerSceneStart) {
             scene_manager_next_scene(scene_manager, ThermometerSceneLog);
@@ -52,7 +54,8 @@ bool thermometer_custom_event_callback(void* context, uint32_t event) {
         return true;
     case ThermometerCustomEventCliLogStop:
         if(scene == ThermometerSceneLog) {
-            scene_manager_search_and_switch_to_previous_scene(scene_manager, ThermometerSceneStart);
+            scene_manager_search_and_switch_to_previous_scene(
+                scene_manager, ThermometerSceneStart);
         }
         return true;
     default:
@@ -105,6 +108,9 @@ Thermometer* thermometer_alloc() {
     view_dispatcher_add_view(
         app->view_dispatcher, ThermometerViewPopup, popup_get_view(app->popup));
 
+    app->log_view = thermometer_scene_log_view_alloc(app);
+    view_dispatcher_add_view(app->view_dispatcher, ThermometerViewLog, app->log_view);
+
     scene_manager_next_scene(app->scene_manager, ThermometerSceneStart);
 
     app->onewire_worker = onewire_worker_alloc();
@@ -127,6 +133,10 @@ void thermometer_app_free(Thermometer* app) {
     //  Popup
     view_dispatcher_remove_view(app->view_dispatcher, ThermometerViewPopup);
     popup_free(app->popup);
+
+    //  Log
+    view_dispatcher_remove_view(app->view_dispatcher, ThermometerViewLog);
+    thermometer_scene_log_view_free(app->log_view);
 
     view_dispatcher_free(app->view_dispatcher);
     scene_manager_free(app->scene_manager);
@@ -161,6 +171,9 @@ int32_t thermometer_app(void* p) {
     view_dispatcher_run(thermometer->view_dispatcher);
 
     thermometer_cli_unregister(thermometer);
+
+    // The loader can close the app on any scene: run its on_exit (stops the worker, OTG)
+    scene_manager_stop(thermometer->scene_manager);
 
     thermometer_app_free(thermometer);
 

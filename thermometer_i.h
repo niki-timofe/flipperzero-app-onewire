@@ -10,6 +10,8 @@
 
 #include <gui/gui.h>
 #include <gui/view_dispatcher.h>
+#include <gui/elements.h>
+#include <gui/view.h>
 #include <gui/modules/popup.h>
 #include <gui/modules/submenu.h>
 #include <gui/modules/widget.h>
@@ -23,7 +25,7 @@
 #include "scenes/thermometer_scene.h"
 
 #define TM_APP_VERSION "0.2.0"
-#define TM_LOG_DIR "/ext/apps_data/thermometer"
+#define TM_LOG_DIR     "/ext/apps_data/thermometer"
 
 struct Thermometer {
     Gui* gui;
@@ -35,6 +37,7 @@ struct Thermometer {
     Submenu* submenu;
     Widget* widget;
     Popup* popup;
+    View* log_view;
 
     OneWireWorker* onewire_worker;
     OneWireDeviceData device;
@@ -54,6 +57,7 @@ typedef enum {
     ThermometerViewSubmenu,
     ThermometerViewWidget,
     ThermometerViewPopup,
+    ThermometerViewLog,
 } ThermometerView;
 
 // Custom events sent by the CLI commands, handled in thermometer_custom_event_callback
@@ -61,4 +65,9 @@ typedef enum {
     ThermometerCustomEventCliRead = 100,
     ThermometerCustomEventCliLogStart,
     ThermometerCustomEventCliLogStop,
+    ThermometerCustomEventLogStop,
 } ThermometerCustomEvent;
+
+View* thermometer_scene_log_view_alloc(Thermometer* app);
+
+void thermometer_scene_log_view_free(View* view);

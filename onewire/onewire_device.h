@@ -12,7 +12,9 @@ typedef struct {
     uint32_t timestamp;
 } OneWireDeviceData;
 
-typedef enum { OneWireDeviceUnitsTemperatureCelsius } OneWireDeviceUnits;
+typedef enum {
+    OneWireDeviceUnitsTemperatureCelsius
+} OneWireDeviceUnits;
 
 typedef struct {
     OneWireDeviceUnits units;

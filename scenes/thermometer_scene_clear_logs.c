@@ -44,8 +44,7 @@ bool thermometer_scene_clear_logs_on_event(void* context, SceneManagerEvent even
             const bool ok = storage_simply_remove_recursive(storage, TM_LOG_DIR);
             furi_record_close(RECORD_STORAGE);
 
-            notification_message(
-                app->notifications, ok ? &sequence_success : &sequence_error);
+            notification_message(app->notifications, ok ? &sequence_success : &sequence_error);
         }
         scene_manager_previous_scene(app->scene_manager);
         consumed = true;

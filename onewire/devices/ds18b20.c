@@ -81,9 +81,7 @@ void onewire_device_reader_ds18b20_print(OneWireDeviceData* onewire_device, Furi
     OneWireDeviceDataParsed* data = onewire_device_reader_ds18b20_parse(onewire_device);
 
     furi_string_cat_printf(
-        string,
-        "Resolution: %u bit\n",
-        resolution_bits[ds18b20_resolution_index(onewire_device)]);
+        string, "Resolution: %u bit\n", resolution_bits[ds18b20_resolution_index(onewire_device)]);
     furi_string_cat_printf(string, "Temperature: %.4f*C", data->value);
     free(data);
 }

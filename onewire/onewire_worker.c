@@ -53,7 +53,8 @@ void onewire_worker_search(OneWireWorker* instance) {
     onewire_device->first_read = true;
 
     while(instance->state == OneWireWorkerSearch) {
-        if(!onewire_host_search(instance->onewire_host, onewire_device->address, OneWireHostSearchModeNormal)) {
+        if(!onewire_host_search(
+               instance->onewire_host, onewire_device->address, OneWireHostSearchModeNormal)) {
             onewire_host_reset_search(instance->onewire_host);
             furi_delay_ms(100);
             continue;
