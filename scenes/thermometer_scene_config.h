@@ -1,4 +1,6 @@
 ADD_SCENE(thermometer, start, Start)
 ADD_SCENE(thermometer, read, Read)
 ADD_SCENE(thermometer, info, Info)
+ADD_SCENE(thermometer, log, Log)
+ADD_SCENE(thermometer, clear_logs, ClearLogs)
 ADD_SCENE(thermometer, about, About)

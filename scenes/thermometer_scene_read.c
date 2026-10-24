@@ -32,6 +32,7 @@ bool thermometer_scene_read_on_event(void* context, SceneManagerEvent event) {
     if(event.type == SceneManagerEventTypeCustom) {
         switch(event.event) {
         case OneWireWorkerEventReadSuccess:
+            thermometer_status_publish(app, true);
             thermometer_notification_message(app, ThermometerNotificationMessageSuccess);
             scene_manager_search_and_switch_to_another_scene(
                 app->scene_manager, ThermometerSceneInfo);

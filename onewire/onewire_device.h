@@ -5,13 +5,20 @@
 
 typedef struct {
     uint8_t address[8];
-    uint8_t data[8];
+    uint8_t data[9];
+    // Set by worker when the bus was just powered up (DS18B20 yields 85.0 *C on first read)
+    bool first_read;
+    // Unix time of the last successful read
+    uint32_t timestamp;
 } OneWireDeviceData;
 
-typedef enum { OneWireDeviceUnitsTemperatureCelsius } OneWireDeviceUnits;
+typedef enum {
+    OneWireDeviceUnitsTemperatureCelsius
+} OneWireDeviceUnits;
 
 typedef struct {
     OneWireDeviceUnits units;
+    int16_t raw;
     double value;
 } OneWireDeviceDataParsed;
 

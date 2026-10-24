@@ -27,13 +27,13 @@ jobs:
             experimental: false
     continue-on-error: ${{ github.event.pull_request != null && github.event.pull_request.draft || matrix.experimental }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - run: |
           pip install ufbt
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: cache-ufbt
         with:
           path: ~/.ufbt
@@ -42,10 +42,11 @@ jobs:
           ufbt update --channel=${{ matrix.channel }}
       - run: |
           ufbt
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: app.${{ matrix.channel }}
           if-no-files-found: error
+          include-hidden-files: true
           path: |
             dist/*.fap
             ~/.ufbt/current/ufbt_state.json
@@ -55,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: app.release
           path: ~/
@@ -63,7 +64,7 @@ jobs:
           echo "SDK_STATE=$(awk 1 ORS='' ~/.ufbt/current/ufbt_state.json)" >> $GITHUB_ENV
       - run: |
           echo "Flipper firmware version: ${{ fromJson(env.SDK_STATE).version }}" >> release.txt
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.fap

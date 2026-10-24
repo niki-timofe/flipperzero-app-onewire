@@ -2,7 +2,9 @@
 
 typedef enum {
     SubmenuIndexThermometerRead,
+    SubmenuIndexThermometerLog,
     SubmenuIndexThermometerInfo,
+    SubmenuIndexThermometerClearLogs,
     SubmenuIndexThermometerAbout,
 } SubmenuIndex;
 
@@ -25,11 +27,24 @@ void thermometer_scene_start_on_enter(void* context) {
     if(onewire_device_is_device_read(&app->device)) {
         submenu_add_item(
             submenu,
+            "Log",
+            SubmenuIndexThermometerLog,
+            thermometer_scene_start_submenu_callback,
+            app);
+        submenu_add_item(
+            submenu,
             "Info",
             SubmenuIndexThermometerInfo,
             thermometer_scene_start_submenu_callback,
             app);
     }
+
+    submenu_add_item(
+        submenu,
+        "Clear logs",
+        SubmenuIndexThermometerClearLogs,
+        thermometer_scene_start_submenu_callback,
+        app);
 
     submenu_add_item(
         submenu,
@@ -54,8 +69,16 @@ bool thermometer_scene_start_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(app->scene_manager, ThermometerSceneRead);
             consumed = true;
             break;
+        case SubmenuIndexThermometerLog:
+            scene_manager_next_scene(app->scene_manager, ThermometerSceneLog);
+            consumed = true;
+            break;
         case SubmenuIndexThermometerInfo:
             scene_manager_next_scene(app->scene_manager, ThermometerSceneInfo);
+            consumed = true;
+            break;
+        case SubmenuIndexThermometerClearLogs:
+            scene_manager_next_scene(app->scene_manager, ThermometerSceneClearLogs);
             consumed = true;
             break;
         case SubmenuIndexThermometerAbout:
