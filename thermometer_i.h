@@ -24,7 +24,7 @@
 
 #include "scenes/thermometer_scene.h"
 
-#define TM_APP_VERSION "0.2.0"
+#define TM_APP_VERSION "0.2.1"
 #define TM_LOG_DIR     "/ext/apps_data/thermometer"
 
 // Copy of the state published by the app thread, so that the CLI thread never reads live fields
