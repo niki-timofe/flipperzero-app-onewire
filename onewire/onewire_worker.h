@@ -3,6 +3,9 @@
 #include "onewire_device.h"
 #include "devices/registry.h"
 
+// Delay between readings in log mode
+#define ONEWIRE_WORKER_LOG_INTERVAL_MS (10 * 1000)
+
 typedef enum {
     // Init states
     OneWireWorkerNone,
@@ -10,6 +13,7 @@ typedef enum {
 
     // Main states
     OneWireWorkerSearch,
+    OneWireWorkerLog,
 
     // Transition
     OneWireWorkerStateStop,
@@ -18,6 +22,7 @@ typedef enum {
 typedef enum {
     OneWireWorkerEventReserved = 50,
     OneWireWorkerEventDeviceFound,
+    OneWireWorkerEventReadStart,
 
     // Sensors read
     OneWireWorkerEventReadSuccess,

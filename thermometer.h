@@ -7,6 +7,7 @@ typedef enum {
     ThermometerNotificationMessageSuccess,
     ThermometerNotificationMessageReadStart,
     ThermometerNotificationMessageBlinkStop,
+    ThermometerNotificationMessageSdWrite,
 } ThermometerNotificationMessage;
 
 void thermometer_notification_message(

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "thermometer.h"
 #include "onewire/onewire_worker.h"
 
@@ -13,12 +15,15 @@
 #include <gui/modules/widget.h>
 
 #include <notification/notification_messages.h>
+#include <storage/storage.h>
+#include <furi_hal.h>
 
 #include <lib/one_wire/one_wire_host.h>
 
 #include "scenes/thermometer_scene.h"
 
-#define TM_APP_VERSION "0.1.4"
+#define TM_APP_VERSION "0.2.0"
+#define TM_LOG_DIR "/ext/apps_data/thermometer"
 
 struct Thermometer {
     Gui* gui;
@@ -33,6 +38,16 @@ struct Thermometer {
 
     OneWireWorker* onewire_worker;
     OneWireDeviceData device;
+
+    // Logging state
+    FuriString* log_path;
+    uint32_t log_start_timestamp;
+    uint32_t log_rows;
+    uint32_t log_errors;
+    bool log_has_value;
+    double log_last_value;
+    bool log_write_failed;
+    bool log_active;
 };
 
 typedef enum {
@@ -40,3 +55,10 @@ typedef enum {
     ThermometerViewWidget,
     ThermometerViewPopup,
 } ThermometerView;
+
+// Custom events sent by the CLI commands, handled in thermometer_custom_event_callback
+typedef enum {
+    ThermometerCustomEventCliRead = 100,
+    ThermometerCustomEventCliLogStart,
+    ThermometerCustomEventCliLogStop,
+} ThermometerCustomEvent;

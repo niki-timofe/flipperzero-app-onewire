@@ -1,16 +1,63 @@
 #include "thermometer_i.h"
+#include "thermometer_cli.h"
+
+// Same green flash the firmware uses for SD card activity (storages/sd_notify.c)
+static const NotificationSequence sequence_sd_write = {
+    &message_green_255,
+    &message_delay_50,
+    &message_green_0,
+    &message_delay_50,
+    &message_green_255,
+    &message_delay_50,
+    &message_green_0,
+    &message_delay_50,
+    &message_green_255,
+    &message_delay_50,
+    &message_green_0,
+    &message_delay_50,
+    NULL,
+};
 
 static const NotificationSequence* thermometer_notification_sequences[] = {
     &sequence_error,
     &sequence_success,
     &sequence_blink_start_cyan,
     &sequence_blink_stop,
+    &sequence_sd_write,
 };
 
 bool thermometer_custom_event_callback(void* context, uint32_t event) {
     furi_assert(context);
     Thermometer* app = context;
-    return scene_manager_handle_custom_event(app->scene_manager, event);
+    SceneManager* scene_manager = app->scene_manager;
+    const uint32_t scene = scene_manager_get_current_scene(scene_manager);
+
+    // Same transitions as the menu items, only from the idle screens
+    switch(event) {
+    case ThermometerCustomEventCliRead:
+        if(scene == ThermometerSceneInfo) {
+            scene_manager_search_and_switch_to_previous_scene(scene_manager, ThermometerSceneStart);
+        }
+        if(scene_manager_get_current_scene(scene_manager) == ThermometerSceneStart) {
+            scene_manager_next_scene(scene_manager, ThermometerSceneRead);
+        }
+        return true;
+    case ThermometerCustomEventCliLogStart:
+        if(scene == ThermometerSceneInfo) {
+            scene_manager_search_and_switch_to_previous_scene(scene_manager, ThermometerSceneStart);
+        }
+        if(scene_manager_get_current_scene(scene_manager) == ThermometerSceneStart) {
+            scene_manager_next_scene(scene_manager, ThermometerSceneLog);
+        }
+        return true;
+    case ThermometerCustomEventCliLogStop:
+        if(scene == ThermometerSceneLog) {
+            scene_manager_search_and_switch_to_previous_scene(scene_manager, ThermometerSceneStart);
+        }
+        return true;
+    default:
+        return scene_manager_handle_custom_event(scene_manager, event);
+    }
 }
 
 bool thermometer_back_event_callback(void* context) {
@@ -34,7 +81,6 @@ Thermometer* thermometer_alloc() {
 
     app->view_dispatcher = view_dispatcher_alloc();
     app->scene_manager = scene_manager_alloc(&thermometer_scene_handlers, app);
-    view_dispatcher_enable_queue(app->view_dispatcher);
 
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
 
@@ -63,6 +109,8 @@ Thermometer* thermometer_alloc() {
 
     app->onewire_worker = onewire_worker_alloc();
 
+    app->log_path = furi_string_alloc();
+
     return app;
 }
 
@@ -76,6 +124,10 @@ void thermometer_app_free(Thermometer* app) {
     view_dispatcher_remove_view(app->view_dispatcher, ThermometerViewWidget);
     widget_free(app->widget);
 
+    //  Popup
+    view_dispatcher_remove_view(app->view_dispatcher, ThermometerViewPopup);
+    popup_free(app->popup);
+
     view_dispatcher_free(app->view_dispatcher);
     scene_manager_free(app->scene_manager);
 
@@ -83,6 +135,8 @@ void thermometer_app_free(Thermometer* app) {
     furi_record_close(RECORD_NOTIFICATION);
 
     onewire_worker_free(app->onewire_worker);
+
+    furi_string_free(app->log_path);
 
     free(app);
 }
@@ -100,9 +154,13 @@ int32_t thermometer_app(void* p) {
 
     Thermometer* thermometer = thermometer_alloc();
 
-    DOLPHIN_DEED(DolphinDeedPluginStart);
+    dolphin_deed(DolphinDeedPluginStart);
+
+    thermometer_cli_register(thermometer);
 
     view_dispatcher_run(thermometer->view_dispatcher);
+
+    thermometer_cli_unregister(thermometer);
 
     thermometer_app_free(thermometer);
 
